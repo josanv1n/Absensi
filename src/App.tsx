@@ -14,6 +14,7 @@ export default function App() {
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [selectedEmp, setSelectedEmp] = useState('');
   const [shift, setShift] = useState('pagi');
@@ -26,12 +27,14 @@ export default function App() {
 
   const fetchDataFromGAS = async () => {
     if (!GAS_URL) {
+      setFetchError("URL Google Apps Script (VITE_GAS_URL) belum diatur di .env");
       setIsLoadingEmployees(false);
       return;
     }
     
     setIsLoadingHistory(true);
     setIsLoadingEmployees(true);
+    setFetchError(null);
     
     try {
       const response = await fetch(GAS_URL);
@@ -44,12 +47,16 @@ export default function App() {
           if (!selectedEmp) {
             setSelectedEmp(result.employees[0].id);
           }
+        } else {
+          setFetchError("Data karyawan kosong di Spreadsheet.");
         }
       } else {
         console.error("Error from GAS:", result.error);
+        setFetchError("Error dari Script: " + result.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch data:", error);
+      setFetchError("Gagal terhubung ke Google Script. Pastikan URL benar dan sudah di-deploy dengan akses 'Anyone'.");
     } finally {
       setIsLoadingHistory(false);
       setIsLoadingEmployees(false);
@@ -294,25 +301,31 @@ export default function App() {
 
         {/* Form Section */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-cyan-500 flex items-center gap-2">
-              <User size={14} /> Identity
-            </label>
-            <select 
-              value={selectedEmp}
-              onChange={(e) => setSelectedEmp(e.target.value)}
-              required
-              disabled={isLoadingEmployees}
-              className="w-full bg-slate-900 border border-cyan-500/30 rounded-lg p-3 text-cyan-50 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 appearance-none disabled:opacity-50"
-            >
-              <option value="" disabled>
-                {isLoadingEmployees ? "Memuat data karyawan..." : "Select Employee..."}
-              </option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.id} - {emp.name}</option>
-              ))}
-            </select>
-          </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wider text-cyan-500 flex items-center gap-2">
+                <User size={14} /> Identity
+              </label>
+              <select 
+                value={selectedEmp}
+                onChange={(e) => setSelectedEmp(e.target.value)}
+                required
+                disabled={isLoadingEmployees || employees.length === 0}
+                className="w-full bg-slate-900 border border-cyan-500/30 rounded-lg p-3 text-cyan-50 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 appearance-none disabled:opacity-50"
+              >
+                <option value="" disabled>
+                  {isLoadingEmployees ? "Memuat data karyawan..." : employees.length === 0 ? "Data tidak tersedia" : "Select Employee..."}
+                </option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.id} - {emp.name}</option>
+                ))}
+              </select>
+              {fetchError && (
+                <div className="text-xs text-red-400 mt-1 flex items-start gap-1">
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                  <span>{fetchError}</span>
+                </div>
+              )}
+            </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">

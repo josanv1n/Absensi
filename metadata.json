@@ -1,0 +1,9 @@
+{
+  "name": "Smart Attendance System",
+  "description": "Sistem Absensi Jarak Jauh dengan Kamera dan Lokasi",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

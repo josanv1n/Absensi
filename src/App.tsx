@@ -18,6 +18,7 @@ export default function App() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   const [selectedEmp, setSelectedEmp] = useState('');
@@ -28,6 +29,7 @@ export default function App() {
 
   const startCamera = async () => {
     try {
+      setCameraError(null);
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
@@ -38,8 +40,15 @@ export default function App() {
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing camera:", err);
+      if (err.name === 'NotAllowedError' || err.message.includes('Permission denied')) {
+        setCameraError("Akses kamera ditolak. Mohon izinkan akses kamera di pengaturan browser Anda.");
+      } else if (err.name === 'NotFoundError') {
+        setCameraError("Kamera tidak ditemukan pada perangkat ini.");
+      } else {
+        setCameraError("Gagal mengakses kamera: " + err.message);
+      }
     }
   };
 
@@ -172,7 +181,19 @@ export default function App() {
           </div>
           
           <div className="relative rounded-xl overflow-hidden border-2 border-cyan-500/30 bg-slate-900 aspect-[3/4] shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-            {!photo ? (
+            {cameraError ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900/80 backdrop-blur-sm">
+                <AlertTriangle size={48} className="text-red-500 mb-4" />
+                <p className="text-sm text-red-400 mb-4">{cameraError}</p>
+                <button 
+                  type="button" 
+                  onClick={startCamera}
+                  className="px-4 py-2 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 rounded-lg hover:bg-cyan-500/30 transition-colors flex items-center gap-2 text-sm uppercase tracking-wider"
+                >
+                  <RefreshCw size={14} /> Coba Lagi
+                </button>
+              </div>
+            ) : !photo ? (
               <>
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 <div className="absolute inset-0 border-2 border-cyan-400/50 m-4 rounded-lg pointer-events-none">

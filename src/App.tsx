@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw, History } from 'lucide-react';
 
-const EMPLOYEES = [
-  { id: 'EMP001', name: 'Johan' },
-  { id: 'EMP002', name: 'Budi Santoso' },
-  { id: 'EMP003', name: 'Siti Aminah' },
-  { id: 'EMP004', name: 'Ahmad Fauzi' },
-  { id: 'EMP005', name: 'Dewi Lestari' },
-  { id: 'EMP006', name: 'Rudi Hartono' },
-];
-
 const GAS_URL = import.meta.env.VITE_GAS_URL || "";
 
 export default function App() {
@@ -21,6 +12,9 @@ export default function App() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
+
   const [selectedEmp, setSelectedEmp] = useState('');
   const [shift, setShift] = useState('pagi');
   const [status, setStatus] = useState('HADIR');
@@ -30,24 +24,35 @@ export default function App() {
   const [history, setHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  const fetchHistory = async () => {
-    if (!GAS_URL) return;
+  const fetchDataFromGAS = async () => {
+    if (!GAS_URL) {
+      setIsLoadingEmployees(false);
+      return;
+    }
+    
     setIsLoadingHistory(true);
+    setIsLoadingEmployees(true);
     
     try {
-      // Menggunakan fetch standar (GET request adalah simple request, biasanya aman dari CORS jika di-deploy dengan benar)
       const response = await fetch(GAS_URL);
       const result = await response.json();
       
       if (result.success) {
-        setHistory(result.data);
+        if (result.history) setHistory(result.history);
+        if (result.employees && result.employees.length > 0) {
+          setEmployees(result.employees);
+          if (!selectedEmp) {
+            setSelectedEmp(result.employees[0].id);
+          }
+        }
       } else {
         console.error("Error from GAS:", result.error);
       }
     } catch (error) {
-      console.error("Failed to fetch history:", error);
+      console.error("Failed to fetch data:", error);
     } finally {
       setIsLoadingHistory(false);
+      setIsLoadingEmployees(false);
     }
   };
 
@@ -109,7 +114,7 @@ export default function App() {
   useEffect(() => {
     startCamera();
     getLocation();
-    fetchHistory();
+    fetchDataFromGAS();
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -144,7 +149,7 @@ export default function App() {
     }
 
     setIsSubmitting(true);
-    const empName = EMPLOYEES.find(e => e.id === selectedEmp)?.name || '';
+    const empName = employees.find(e => e.id === selectedEmp)?.name || '';
 
     const payload = {
       id: selectedEmp,
@@ -186,7 +191,7 @@ export default function App() {
         
         // Beri jeda sedikit agar Google Sheets selesai menyimpan data sebelum kita fetch ulang
         setTimeout(() => {
-          fetchHistory();
+          fetchDataFromGAS();
         }, 1500);
       } else {
         alert("Gagal: " + result.error);
@@ -297,10 +302,13 @@ export default function App() {
               value={selectedEmp}
               onChange={(e) => setSelectedEmp(e.target.value)}
               required
-              className="w-full bg-slate-900 border border-cyan-500/30 rounded-lg p-3 text-cyan-50 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 appearance-none"
+              disabled={isLoadingEmployees}
+              className="w-full bg-slate-900 border border-cyan-500/30 rounded-lg p-3 text-cyan-50 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 appearance-none disabled:opacity-50"
             >
-              <option value="" disabled>Select Employee...</option>
-              {EMPLOYEES.map(emp => (
+              <option value="" disabled>
+                {isLoadingEmployees ? "Memuat data karyawan..." : "Select Employee..."}
+              </option>
+              {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>{emp.id} - {emp.name}</option>
               ))}
             </select>
@@ -372,7 +380,7 @@ export default function App() {
             <h2 className="text-sm font-semibold uppercase tracking-widest flex items-center gap-2">
               <History size={16} /> Riwayat Absensi
             </h2>
-            <button type="button" onClick={fetchHistory} className="text-cyan-500 hover:text-cyan-300 p-1">
+            <button type="button" onClick={fetchDataFromGAS} className="text-cyan-500 hover:text-cyan-300 p-1">
               <RefreshCw size={14} className={isLoadingHistory ? "animate-spin" : ""} />
             </button>
           </div>

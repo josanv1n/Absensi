@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw, History } from 'lucide-react';
+import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw, History, X, Maximize2 } from 'lucide-react';
 
 const GAS_URL = import.meta.env.VITE_GAS_URL || "";
 
@@ -24,6 +24,7 @@ export default function App() {
   
   const [history, setHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const fetchDataFromGAS = async () => {
     if (!GAS_URL) {
@@ -63,12 +64,12 @@ export default function App() {
     }
   };
 
-  // Helper untuk mengubah URL Google Drive (view) menjadi URL gambar langsung (uc?id=)
-  const getDriveImageUrl = (url: string) => {
+  // Helper untuk mengubah URL Google Drive (view) menjadi URL gambar langsung (thumbnail)
+  const getDriveImageUrl = (url: string, size = 'w200') => {
     if (!url) return '';
     const match = url.match(/\/d\/(.+?)\//);
     if (match && match[1]) {
-      return `https://drive.google.com/uc?id=${match[1]}`;
+      return `https://drive.google.com/thumbnail?id=${match[1]}&sz=${size}`;
     }
     return url;
   };
@@ -405,7 +406,17 @@ export default function App() {
               history.map((record, idx) => (
                 <div key={idx} className="bg-slate-900/50 border border-cyan-500/20 rounded-xl p-3 flex items-center gap-3 shadow-[0_0_10px_rgba(6,182,212,0.05)]">
                   {record.photo ? (
-                    <img src={getDriveImageUrl(record.photo)} alt="foto" className="w-12 h-12 rounded-lg object-cover border border-cyan-500/30" referrerPolicy="no-referrer" />
+                    <div className="relative group cursor-pointer" onClick={() => setSelectedPhoto(record.photo)}>
+                      <img 
+                        src={getDriveImageUrl(record.photo)} 
+                        alt="foto" 
+                        className="w-12 h-12 rounded-lg object-cover border border-cyan-500/30 group-hover:border-cyan-400 transition-colors" 
+                        referrerPolicy="no-referrer" 
+                      />
+                      <div className="absolute inset-0 bg-cyan-500/20 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+                        <Maximize2 size={14} className="text-white" />
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700">
                       <User size={20} className="text-slate-500" />
@@ -437,6 +448,38 @@ export default function App() {
           </div>
         </section>
 
+        {/* Photo Modal */}
+        {selectedPhoto && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="relative max-w-2xl w-full bg-slate-900 border border-cyan-500/30 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="absolute top-4 right-4 z-10">
+                <button 
+                  onClick={() => setSelectedPhoto(null)}
+                  className="p-2 bg-slate-950/50 hover:bg-red-500/80 text-white rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <img 
+                src={getDriveImageUrl(selectedPhoto, 'w1000')} 
+                alt="Full Absensi" 
+                className="w-full h-auto max-h-[80vh] object-contain"
+                referrerPolicy="no-referrer"
+              />
+              <div className="p-4 bg-slate-900 border-t border-cyan-500/10 flex justify-center">
+                <a 
+                  href={selectedPhoto} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-cyan-500 hover:text-cyan-400 font-semibold uppercase tracking-widest flex items-center gap-2"
+                >
+                  Buka di Google Drive
+                </a>
+              </div>
+            </div>
+            <div className="absolute inset-0 -z-10" onClick={() => setSelectedPhoto(null)}></div>
+          </div>
+        )}
       </main>
     </div>
   );

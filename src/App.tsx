@@ -354,6 +354,7 @@ export default function App() {
               >
                 <option value="HADIR">HADIR</option>
                 <option value="TERLAMBAT">TERLAMBAT</option>
+                <option value="PULANG">PULANG</option>
                 <option value="IZIN">IZIN</option>
                 <option value="SAKIT">SAKIT</option>
               </select>
@@ -432,6 +433,7 @@ export default function App() {
                   </div>
                   <div className={`text-xs font-bold px-2 py-1 rounded-md uppercase ${
                     (record.status === 'HADIR' || record.status === 'MASUK') ? 'bg-emerald-500/20 text-emerald-400' :
+                    record.status === 'PULANG' ? 'bg-purple-500/20 text-purple-400' :
                     record.status === 'TERLAMBAT' ? 'bg-orange-500/20 text-orange-400' :
                     record.status === 'SAKIT' ? 'bg-blue-500/20 text-blue-400' :
                     'bg-slate-500/20 text-slate-400'

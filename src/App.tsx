@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw, History } from 'lucide-react';
 
 const EMPLOYEES = [
   { id: 'EMP001', name: 'Johan' },
@@ -26,6 +26,46 @@ export default function App() {
   const [status, setStatus] = useState('HADIR');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const fetchHistory = () => {
+    if (!GAS_URL) return;
+    setIsLoadingHistory(true);
+    
+    // Menggunakan teknik JSONP untuk menghindari error CORS saat mengambil data
+    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+    
+    // Buat fungsi global sementara untuk menerima data dari GAS
+    (window as any)[callbackName] = (data: any) => {
+      if (data.success) {
+        setHistory(data.data);
+      } else {
+        console.error("Error from GAS:", data.error);
+      }
+      setIsLoadingHistory(false);
+      // Bersihkan script dan fungsi global setelah selesai
+      delete (window as any)[callbackName];
+      const script = document.getElementById(callbackName);
+      if (script) script.remove();
+    };
+
+    // Buat tag script untuk memanggil URL GAS dengan parameter callback
+    const script = document.createElement('script');
+    script.src = `${GAS_URL}?callback=${callbackName}`;
+    script.id = callbackName;
+    
+    // Tangani error jaringan (misalnya offline)
+    script.onerror = () => {
+      console.error("Failed to load JSONP script");
+      setIsLoadingHistory(false);
+      delete (window as any)[callbackName];
+      script.remove();
+    };
+
+    document.body.appendChild(script);
+  };
 
   const startCamera = async () => {
     try {
@@ -75,6 +115,7 @@ export default function App() {
   useEffect(() => {
     startCamera();
     getLocation();
+    fetchHistory();
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -141,16 +182,24 @@ export default function App() {
           'Content-Type': 'text/plain;charset=utf-8',
         }
       });
+      
       const result = await response.json();
       if (result.success) {
         alert("Absensi berhasil dicatat!");
         setPhoto(null);
         startCamera();
         setNotes('');
+        
+        // Beri jeda sedikit agar Google Sheets selesai menyimpan data sebelum kita fetch ulang
+        setTimeout(() => {
+          fetchHistory();
+        }, 1500);
       } else {
         alert("Gagal: " + result.error);
       }
+      
     } catch (error) {
+      console.error("Fetch error:", error);
       alert("Terjadi kesalahan jaringan. Pastikan Web App di-deploy dengan akses 'Anyone'.");
     } finally {
       setIsSubmitting(false);
@@ -322,6 +371,57 @@ export default function App() {
             )}
           </button>
         </form>
+
+        {/* History Section */}
+        <section className="mt-10 space-y-4">
+          <div className="flex items-center justify-between text-cyan-400 border-b border-cyan-500/20 pb-2">
+            <h2 className="text-sm font-semibold uppercase tracking-widest flex items-center gap-2">
+              <History size={16} /> Riwayat Absensi
+            </h2>
+            <button type="button" onClick={fetchHistory} className="text-cyan-500 hover:text-cyan-300 p-1">
+              <RefreshCw size={14} className={isLoadingHistory ? "animate-spin" : ""} />
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            {isLoadingHistory && history.length === 0 ? (
+              <div className="text-center text-xs text-cyan-500/50 py-8 animate-pulse">Memuat riwayat data...</div>
+            ) : history.length > 0 ? (
+              history.map((record, idx) => (
+                <div key={idx} className="bg-slate-900/50 border border-cyan-500/20 rounded-xl p-3 flex items-center gap-3 shadow-[0_0_10px_rgba(6,182,212,0.05)]">
+                  {record.photo ? (
+                    <img src={record.photo} alt="foto" className="w-12 h-12 rounded-lg object-cover border border-cyan-500/30" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700">
+                      <User size={20} className="text-slate-500" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-bold text-cyan-50 truncate">{record.name}</h4>
+                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-1">
+                      <span>{record.timestamp ? new Date(record.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) : '-'}</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                      <span className="uppercase">{record.shift}</span>
+                    </div>
+                  </div>
+                  <div className={`text-xs font-bold px-2 py-1 rounded-md uppercase ${
+                    record.status === 'HADIR' ? 'bg-emerald-500/20 text-emerald-400' :
+                    record.status === 'TERLAMBAT' ? 'bg-orange-500/20 text-orange-400' :
+                    record.status === 'SAKIT' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {record.status}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-xs text-slate-500 py-8 bg-slate-900/30 rounded-xl border border-dashed border-slate-700">
+                Belum ada data absensi.
+              </div>
+            )}
+          </div>
+        </section>
+
       </main>
     </div>
   );

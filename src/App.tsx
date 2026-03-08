@@ -30,41 +30,35 @@ export default function App() {
   const [history, setHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  const fetchHistory = () => {
+  const fetchHistory = async () => {
     if (!GAS_URL) return;
     setIsLoadingHistory(true);
     
-    // Menggunakan teknik JSONP untuk menghindari error CORS saat mengambil data
-    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-    
-    // Buat fungsi global sementara untuk menerima data dari GAS
-    (window as any)[callbackName] = (data: any) => {
-      if (data.success) {
-        setHistory(data.data);
+    try {
+      // Menggunakan fetch standar (GET request adalah simple request, biasanya aman dari CORS jika di-deploy dengan benar)
+      const response = await fetch(GAS_URL);
+      const result = await response.json();
+      
+      if (result.success) {
+        setHistory(result.data);
       } else {
-        console.error("Error from GAS:", data.error);
+        console.error("Error from GAS:", result.error);
       }
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
       setIsLoadingHistory(false);
-      // Bersihkan script dan fungsi global setelah selesai
-      delete (window as any)[callbackName];
-      const script = document.getElementById(callbackName);
-      if (script) script.remove();
-    };
+    }
+  };
 
-    // Buat tag script untuk memanggil URL GAS dengan parameter callback
-    const script = document.createElement('script');
-    script.src = `${GAS_URL}?callback=${callbackName}`;
-    script.id = callbackName;
-    
-    // Tangani error jaringan (misalnya offline)
-    script.onerror = () => {
-      console.error("Failed to load JSONP script");
-      setIsLoadingHistory(false);
-      delete (window as any)[callbackName];
-      script.remove();
-    };
-
-    document.body.appendChild(script);
+  // Helper untuk mengubah URL Google Drive (view) menjadi URL gambar langsung (uc?id=)
+  const getDriveImageUrl = (url: string) => {
+    if (!url) return '';
+    const match = url.match(/\/d\/(.+?)\//);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?id=${match[1]}`;
+    }
+    return url;
   };
 
   const startCamera = async () => {
@@ -390,7 +384,7 @@ export default function App() {
               history.map((record, idx) => (
                 <div key={idx} className="bg-slate-900/50 border border-cyan-500/20 rounded-xl p-3 flex items-center gap-3 shadow-[0_0_10px_rgba(6,182,212,0.05)]">
                   {record.photo ? (
-                    <img src={record.photo} alt="foto" className="w-12 h-12 rounded-lg object-cover border border-cyan-500/30" />
+                    <img src={getDriveImageUrl(record.photo)} alt="foto" className="w-12 h-12 rounded-lg object-cover border border-cyan-500/30" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700">
                       <User size={20} className="text-slate-500" />
@@ -405,7 +399,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className={`text-xs font-bold px-2 py-1 rounded-md uppercase ${
-                    record.status === 'HADIR' ? 'bg-emerald-500/20 text-emerald-400' :
+                    (record.status === 'HADIR' || record.status === 'MASUK') ? 'bg-emerald-500/20 text-emerald-400' :
                     record.status === 'TERLAMBAT' ? 'bg-orange-500/20 text-orange-400' :
                     record.status === 'SAKIT' ? 'bg-blue-500/20 text-blue-400' :
                     'bg-slate-500/20 text-slate-400'

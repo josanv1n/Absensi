@@ -224,9 +224,15 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-cyan-50 font-sans selection:bg-cyan-500/30">
       {/* Header */}
-      <header className="p-4 border-b border-cyan-500/20 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+      <header className="p-4 border-b border-cyan-500/20 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 flex flex-col items-center gap-2">
+        <img 
+          src="https://josanvin.github.io/josanvin/img/SAS.png" 
+          alt="SAS Logo" 
+          className="h-12 w-auto object-contain"
+          referrerPolicy="no-referrer"
+        />
         <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-wider text-center uppercase">
-          Nexus Attendance
+          Smart Attendance System (SAS)
         </h1>
       </header>
 

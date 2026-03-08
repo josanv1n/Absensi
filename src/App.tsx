@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw, History, X, Maximize2 } from 'lucide-react';
+import { Camera, MapPin, Send, User, Clock, CheckCircle2, AlertTriangle, RefreshCw, History, X, Maximize2, RotateCw } from 'lucide-react';
 
 const GAS_URL = import.meta.env.VITE_GAS_URL || "";
 
@@ -21,6 +21,7 @@ export default function App() {
   const [status, setStatus] = useState('HADIR');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   
   const [history, setHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -81,7 +82,7 @@ export default function App() {
         stream.getTracks().forEach(track => track.stop());
       }
       const newStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } } 
+        video: { facingMode: facingMode, width: { ideal: 720 }, height: { ideal: 960 } } 
       });
       setStream(newStream);
       if (videoRef.current) {
@@ -121,6 +122,9 @@ export default function App() {
 
   useEffect(() => {
     startCamera();
+  }, [facingMode]);
+
+  useEffect(() => {
     getLocation();
     fetchDataFromGAS();
     return () => {
@@ -130,6 +134,10 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -265,6 +273,14 @@ export default function App() {
                   className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-4 border-cyan-400 bg-cyan-500/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform"
                 >
                   <div className="w-12 h-12 rounded-full bg-cyan-400/50"></div>
+                </button>
+                <button 
+                  type="button"
+                  onClick={toggleCamera}
+                  className="absolute bottom-8 right-8 w-10 h-10 rounded-full bg-slate-900/50 backdrop-blur-sm border border-cyan-500/30 flex items-center justify-center text-cyan-400 active:rotate-180 transition-transform duration-500"
+                  title="Switch Camera"
+                >
+                  <RotateCw size={18} />
                 </button>
               </>
             ) : (

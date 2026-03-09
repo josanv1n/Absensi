@@ -183,8 +183,9 @@ export default function App() {
     setIsSubmitting(true);
     const empName = employees.find(e => e.id === selectedEmp)?.name || '';
     
-    // Combine address and notes
-    const finalNotes = address ? `${address}${notes ? ' - ' + notes : ''}` : notes;
+    // Combine address, maps link and notes
+    const mapsLink = `https://maps.google.com/?q=${location.lat},${location.lng}`;
+    const finalNotes = `${address || 'Alamat tidak ditemukan'}\nLink: ${mapsLink}${notes ? '\nCatatan: ' + notes : ''}`;
 
     const payload = {
       id: selectedEmp,
@@ -325,8 +326,16 @@ export default function App() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">GPS Coordinates</h3>
               {location ? (
                 <>
-                  <div className="font-mono text-sm text-cyan-300">
+                  <div className="font-mono text-sm text-cyan-300 flex items-center gap-2">
                     {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                    <a 
+                      href={`https://maps.google.com/?q=${location.lat},${location.lng}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[10px] bg-cyan-500/20 px-1 rounded hover:bg-cyan-500/40 transition-colors"
+                    >
+                      MAPS
+                    </a>
                   </div>
                   {address && (
                     <div className="text-[10px] text-slate-400 mt-1 leading-tight italic">

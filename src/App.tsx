@@ -8,6 +8,7 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [address, setAddress] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -102,13 +103,28 @@ export default function App() {
 
   const getLocation = () => {
     setLocationError(null);
+    setAddress(null);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setLocation({ lat, lng });
+          
+          // Reverse Geocoding using Nominatim (OpenStreetMap)
+          try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+              headers: {
+                'Accept-Language': 'id'
+              }
+            });
+            const data = await response.json();
+            if (data && data.display_name) {
+              setAddress(data.display_name);
+            }
+          } catch (error) {
+            console.error("Geocoding error:", error);
+          }
         },
         (error) => {
           setLocationError(error.message);
@@ -166,6 +182,9 @@ export default function App() {
 
     setIsSubmitting(true);
     const empName = employees.find(e => e.id === selectedEmp)?.name || '';
+    
+    // Combine address and notes
+    const finalNotes = address ? `${address}${notes ? ' - ' + notes : ''}` : notes;
 
     const payload = {
       id: selectedEmp,
@@ -175,7 +194,7 @@ export default function App() {
       latitude: location.lat,
       longitude: location.lng,
       photoBase64: photo,
-      notes
+      notes: finalNotes
     };
 
     if (!GAS_URL) {
@@ -305,9 +324,16 @@ export default function App() {
             <div className="flex-1">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">GPS Coordinates</h3>
               {location ? (
-                <div className="font-mono text-sm text-cyan-300">
-                  {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                </div>
+                <>
+                  <div className="font-mono text-sm text-cyan-300">
+                    {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                  </div>
+                  {address && (
+                    <div className="text-[10px] text-slate-400 mt-1 leading-tight italic">
+                      {address}
+                    </div>
+                  )}
+                </>
               ) : locationError ? (
                 <div className="text-xs text-red-400">{locationError}</div>
               ) : (
@@ -452,6 +478,11 @@ export default function App() {
                       <span className="w-1 h-1 rounded-full bg-slate-600"></span>
                       <span className="uppercase">{record.shift}</span>
                     </div>
+                    {record.Notes && (
+                      <div className="text-[10px] text-slate-500 mt-1 truncate italic max-w-[150px]">
+                        {record.Notes}
+                      </div>
+                    )}
                   </div>
                   <div className={`text-xs font-bold px-2 py-1 rounded-md uppercase ${
                     (record.status === 'HADIR' || record.status === 'MASUK') ? 'bg-emerald-500/20 text-emerald-400' :
